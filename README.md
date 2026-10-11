@@ -1,4 +1,4 @@
-# Moon Aligner 月亮照片自动配准、裁切与多点堆栈 v1.5
+# Moon Aligner 月亮照片自动配准、裁切与多点堆栈 v1.5.1
 
 程序会自动检测月面，纠正照片之间的位移与小幅旋转，排除缺边或无法配准的照片，并输出尺寸完全一致的 TIFF。它可以进行平均、中位数或多点局部堆栈，生成噪声更低、受大气扰动影响更小的月面照片。
 
@@ -9,6 +9,8 @@
 [下载最新Windows 64位免安装版](https://github.com/rui098712/moon-aligner-windows/releases/latest/download/MoonAligner-Windows-x64.zip)
 
 下载后解压并双击 `MoonAligner.exe` 即可运行，不需要安装Python。推荐使用64位Windows 10或Windows 11。
+
+软件的窗口、任务栏和EXE文件使用月面照片作为统一应用图标。
 
 ## 支持格式
 
@@ -91,7 +93,7 @@ PyInstaller不是跨平台编译器，因此Windows EXE必须在Windows系统中
 3. 使用PyInstaller构建无需安装Python的 `MoonAligner.exe`。
 4. 将 `MoonAligner-Windows-x64.zip` 保存为Actions构建产物。
 
-在GitHub仓库页面打开 `Actions`，选择 `Test and build Windows app`，即可查看运行结果并下载构建产物。推送形如 `v1.5.0` 的Git标签时，工作流还会自动创建对应的GitHub Release。
+在GitHub仓库页面打开 `Actions`，选择 `Test and build Windows app`，即可查看运行结果并下载构建产物。推送形如 `v1.5.1` 的Git标签时，工作流还会自动创建对应的GitHub Release。
 
 本地运行测试：
 

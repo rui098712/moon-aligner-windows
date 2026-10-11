@@ -12,6 +12,12 @@ import main
 
 
 class StackMathTests(unittest.TestCase):
+    def test_application_icon_assets_are_valid(self) -> None:
+        icon_png = main.read_image(Path("assets/app_icon.png"))
+        self.assertEqual(icon_png.shape, (512, 512, 3))
+        ico_header = Path("assets/app_icon.ico").read_bytes()[:6]
+        self.assertEqual(ico_header, b"\x00\x00\x01\x00\x01\x00")
+
     def test_mean_and_median_preserve_uint16(self) -> None:
         with tempfile.TemporaryDirectory(prefix="moon-stack-test-") as temp:
             root = Path(temp)

@@ -40,6 +40,8 @@ jobs:
           --clean
           --onefile
           --windowed
+          --icon assets/app_icon.ico
+          --add-data "assets;assets"
           --name MoonAligner
           main.py
 

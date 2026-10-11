@@ -38,6 +38,8 @@ echo [3/4] 生成独立 EXE，这一步可能需要几分钟……
     --clean ^
     --onefile ^
     --windowed ^
+    --icon "assets\app_icon.ico" ^
+    --add-data "assets;assets" ^
     --name "月亮裁切与堆栈" ^
     main.py
 if errorlevel 1 goto :failed

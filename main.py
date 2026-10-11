@@ -32,7 +32,7 @@ import numpy as np
 
 
 SUPPORTED_SUFFIXES = {".jpg", ".jpeg", ".png", ".tif", ".tiff"}
-APP_VERSION = "1.5.0"
+APP_VERSION = "1.5.1"
 STACK_LABELS = {
     "不堆栈（只配准和裁切）": "none",
     "平均堆栈（推荐，降噪更好）": "mean",
@@ -40,6 +40,12 @@ STACK_LABELS = {
     "多点局部堆栈（实验，改善大气扰动）": "local",
 }
 STACK_LABELS_REVERSE = {value: key for key, value in STACK_LABELS.items()}
+
+
+def resource_path(relative: str) -> Path:
+    """返回源码运行或PyInstaller打包后的资源文件路径。"""
+    bundle_root = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+    return bundle_root / relative
 
 
 @dataclass
@@ -1259,6 +1265,16 @@ def run_gui(args: argparse.Namespace) -> None:
         raise RuntimeError("当前Python不包含tkinter，无法启动图形界面") from exc
 
     root = tk.Tk()
+    try:
+        icon_image = tk.PhotoImage(file=str(resource_path("assets/app_icon.png")))
+        root.iconphoto(True, icon_image)
+        # 保留Python引用，避免Tk图片对象被垃圾回收。
+        root._moon_aligner_icon = icon_image  # type: ignore[attr-defined]
+        if sys.platform == "win32":
+            root.iconbitmap(default=str(resource_path("assets/app_icon.ico")))
+    except (tk.TclError, OSError):
+        # 图标加载失败不应阻止主程序启动。
+        pass
     MoonAlignerApp(root, args)
     root.mainloop()
 
