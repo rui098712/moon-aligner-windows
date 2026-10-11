@@ -4,6 +4,12 @@
 
 原始照片不会被修改。
 
+## 直接下载Windows版
+
+[下载最新Windows 64位免安装版](https://github.com/rui098712/moon-aligner-windows/releases/latest/download/MoonAligner-Windows-x64.zip)
+
+下载后解压并双击 `MoonAligner.exe` 即可运行，不需要安装Python。推荐使用64位Windows 10或Windows 11。
+
 ## 支持格式
 
 - JPG / JPEG
