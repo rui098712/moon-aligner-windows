@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import math
 import os
 import queue
@@ -22,6 +23,7 @@ import sys
 import tempfile
 import threading
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Iterable
 
@@ -30,6 +32,7 @@ import numpy as np
 
 
 SUPPORTED_SUFFIXES = {".jpg", ".jpeg", ".png", ".tif", ".tiff"}
+APP_VERSION = "1.5.0"
 STACK_LABELS = {
     "不堆栈（只配准和裁切）": "none",
     "平均堆栈（推荐，降噪更好）": "mean",
@@ -82,6 +85,14 @@ def write_tiff(path: Path, image: np.ndarray) -> None:
     ok, encoded = cv2.imencode(".tif", image, [cv2.IMWRITE_TIFF_COMPRESSION, 1])
     if not ok:
         raise ValueError("OpenCV 无法编码 TIFF")
+    encoded.tofile(path)
+
+
+def write_png(path: Path, image: np.ndarray) -> None:
+    """写入 PNG；使用 imencode 兼容包含中文的路径。"""
+    ok, encoded = cv2.imencode(".png", image, [cv2.IMWRITE_PNG_COMPRESSION, 6])
+    if not ok:
+        raise ValueError("OpenCV 无法编码 PNG")
     encoded.tofile(path)
 
 
@@ -346,6 +357,43 @@ def save_report(
             )
 
 
+def save_processing_report(
+    output: Path,
+    input_folder: Path,
+    reference: ScanResult,
+    total_frames: int,
+    accepted_frames: int,
+    crop: tuple[int, int, int, int],
+    stack_method: str,
+    stack_percent: int,
+    ap_size: int,
+    save_aligned: bool,
+) -> None:
+    x1, y1, x2, y2 = crop
+    report = {
+        "application": "Moon Aligner",
+        "version": APP_VERSION,
+        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "input_folder": str(input_folder),
+        "reference_frame": reference.path.name,
+        "frames": {
+            "total": total_frames,
+            "accepted": accepted_frames,
+            "skipped": total_frames - accepted_frames,
+        },
+        "crop": {"x": x1, "y": y1, "width": x2 - x1, "height": y2 - y1},
+        "stack": {
+            "method": stack_method,
+            "selected_percent": stack_percent,
+            "alignment_point_size": ap_size,
+            "saved_aligned_frames": save_aligned,
+        },
+    }
+    with (output / "processing_report.json").open("w", encoding="utf-8") as handle:
+        json.dump(report, handle, ensure_ascii=False, indent=2)
+        handle.write("\n")
+
+
 def cast_stack_result(values: np.ndarray, dtype: np.dtype) -> np.ndarray:
     """把浮点堆栈结果安全地转换回原照片的位深。"""
     dtype = np.dtype(dtype)
@@ -493,6 +541,44 @@ def match_local_patch(
     return aligned, aligned_gray, float(peak)
 
 
+def save_alignment_points_preview(
+    reference: np.ndarray,
+    points: list[tuple[int, int]],
+    ap_size: int,
+    target: Path,
+    maximum_size: int = 1800,
+) -> None:
+    """保存带对齐点网格的预览图，便于检查自动布局是否合理。"""
+    finite = reference[np.isfinite(reference)]
+    if finite.size == 0:
+        return
+    low = float(np.percentile(finite, 0.5))
+    high = float(np.percentile(finite, 99.7))
+    if high <= low:
+        return
+    preview = np.clip((reference.astype(np.float32) - low) / (high - low), 0.0, 1.0)
+    preview = np.round(preview * 255).astype(np.uint8)
+    if preview.ndim == 2:
+        preview = cv2.cvtColor(preview, cv2.COLOR_GRAY2BGR)
+    elif preview.shape[2] == 4:
+        preview = cv2.cvtColor(preview, cv2.COLOR_BGRA2BGR)
+
+    height, width = preview.shape[:2]
+    scale = min(1.0, maximum_size / max(height, width))
+    if scale < 1.0:
+        preview = cv2.resize(preview, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+    half = ap_size / 2.0
+    line_width = max(1, round(1.5 * scale))
+    marker_radius = max(2, round(3 * scale))
+    for cx, cy in points:
+        top_left = (round((cx - half) * scale), round((cy - half) * scale))
+        bottom_right = (round((cx + half) * scale), round((cy + half) * scale))
+        center = (round(cx * scale), round(cy * scale))
+        cv2.rectangle(preview, top_left, bottom_right, (60, 220, 60), line_width)
+        cv2.circle(preview, center, marker_radius, (30, 60, 255), -1)
+    write_png(target, preview)
+
+
 def local_stack_frames(
     frames: np.ndarray,
     target: Path,
@@ -515,6 +601,9 @@ def local_stack_frames(
         f"多点局部堆栈：{len(points)} 个对齐点，块大小 {actual_ap_size} 像素，"
         f"每个点选择最清晰的 {stack_percent}% 帧"
     )
+    preview_target = target.with_name("local_alignment_points.png")
+    save_alignment_points_preview(reference, points, actual_ap_size, preview_target)
+    log(f"对齐点预览：{preview_target.name}")
 
     accumulator = np.memmap(
         temp_folder / "local_accumulator.dat",
@@ -810,6 +899,18 @@ def process_folder(
             )
 
     save_report(output_folder, results, stack_paths)
+    save_processing_report(
+        output_folder,
+        input_folder,
+        reference,
+        len(results),
+        len(accepted),
+        crop,
+        stack_method,
+        stack_percent,
+        ap_size,
+        save_aligned,
+    )
     log("")
     output_description = "配准帧和堆栈图" if save_aligned and stack_method != "none" else (
         "配准帧" if save_aligned else "堆栈图"

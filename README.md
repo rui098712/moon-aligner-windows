@@ -1,4 +1,4 @@
-# 月亮照片自动配准、裁切与多点堆栈 v1.4（Windows版）
+# Moon Aligner 月亮照片自动配准、裁切与多点堆栈 v1.5
 
 程序会自动检测月面，纠正照片之间的位移与小幅旋转，排除缺边或无法配准的照片，并输出尺寸完全一致的 TIFF。它可以进行平均、中位数或多点局部堆栈，生成噪声更低、受大气扰动影响更小的月面照片。
 
@@ -60,7 +60,9 @@ PyInstaller不是跨平台编译器，因此Windows EXE必须在Windows系统中
 - `moon_stack_mean.tif`：平均堆栈结果。
 - `moon_stack_median.tif`：中位数堆栈结果。
 - `moon_stack_local.tif`：多点局部堆栈结果。
+- `local_alignment_points.png`：多点模式自动生成的对齐点网格预览。
 - `alignment_report.csv`：每张照片的清晰度、相关度、位移、旋转和跳过原因。
+- `processing_report.json`：程序版本、处理参数、帧数和裁切范围，方便复现实验。
 
 只会生成当前选择的那一种堆栈结果。如果取消保留单张 TIFF，输出目录中不会出现 `0001_..._aligned.tif` 文件。
 
@@ -73,6 +75,23 @@ PyInstaller不是跨平台编译器，因此Windows EXE必须在Windows系统中
 - “局部块大小”保持 `0` 时会根据月面尺寸自动选择。数值较小能追踪更细的局部变形，但速度更慢、弱纹理处也更容易误配；数值较大则更稳定。
 - 多点模式会在每个对齐点独立选出指定比例的清晰帧，所以不同月面区域可能使用不同的照片组合。
 - 该模式借鉴公开的 lucky imaging 和多对齐点工作流程，并不是 AutoStakkert 内部算法的复制品。目前不包含 SER/视频读取、Drizzle、RGB 通道校准、波形锐化等功能。
+
+## GitHub自动测试和构建
+
+项目包含 `.github/workflows/windows-build.yml`。代码推送到GitHub后会自动：
+
+1. 在Windows环境安装Python 3.12、NumPy和OpenCV。
+2. 运行平均、中位数、多点局部堆栈以及处理报告测试。
+3. 使用PyInstaller构建无需安装Python的 `MoonAligner.exe`。
+4. 将 `MoonAligner-Windows-x64.zip` 保存为Actions构建产物。
+
+在GitHub仓库页面打开 `Actions`，选择 `Test and build Windows app`，即可查看运行结果并下载构建产物。推送形如 `v1.5.0` 的Git标签时，工作流还会自动创建对应的GitHub Release。
+
+本地运行测试：
+
+```bash
+python -m unittest discover -s tests -v
+```
 
 ## 常见问题
 
