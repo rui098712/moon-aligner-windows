@@ -1,0 +1,8 @@
+.venv/
+.build-venv/
+build/
+dist/
+*.spec
+__pycache__/
+*.py[cod]
+moon_aligned/
